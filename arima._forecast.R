@@ -56,6 +56,59 @@ ggplot(AQI,aes(x=Date,y=AQI)) + geom_point(color="navyblue") +
 AQI.ts <- ts(AQI[,c("AQI")])
 AQI$Count <- tsclean(AQI.ts)
 ##
-## Plot data
+## Plot Clean and UnClean  data
 ggplot(data=AQI) + geom_point(aes(x=Date,y=Count,col="Clean",size=1)) + ggtitle("First Pass Cleaning[tsclean]") +
 ylab("Clean Counts") + geom_point(data=AQI,aes(x=Date,y=AQI,col="AQI"))
+##
+## Create weekly and Monthly moving average
+##
+AQI$Weekly <- ma(AQI$Count,order=7)
+AQI$Monthly <- ma(AQI$Count,order=30)
+## Plot moving averages
+##
+ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Count")) +
+  geom_line(aes(x=Date,y=Weekly,col="Weekly")) +
+  geom_line(aes(x=Date,y=Monthly,col="Monthly")) +
+  ggtitle("Actual Counts vs 7 & 30 Day Moving Average")
+
+## 
+## DECOMPOSTION OF THE DATA (2010 & 2011: 
+## take seasonaility , trend and cycle into account
+##
+count_ma = ts(na.omit(AQI$Weekly),frequency=30)
+decomp = stl(count_ma,s.window="periodic")
+deseasonal_cnt <- seasadj(decomp)
+plot(decomp)
+##
+## Test for stationarity = first visual check
+## 2nd Augumented Dickey-Fuller Test.
+##
+adf.test(count_ma,alternative="stationary")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
