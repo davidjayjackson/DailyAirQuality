@@ -16,22 +16,22 @@ library(data.table)
 ## Delete old data sets
 rm(list=ls())
 ## Load sample data and chang date field to "date" type
-data1 <- fread("aqi_train//daily_aqi_by_county_2010.csv")
+data1 <- fread("aqi_train//daily_aqi_by_county_2011.csv")
 data1$Date <- as.Date(data1$Date)
 data1$Month <- lubridate::month(data1$Date)
 ##
-data2 <- fread("aqi_train/daily_aqi_by_county_2011.csv")
+data2 <- fread("aqi_train/daily_aqi_by_county_2012.csv")
 data2$Date <- as.Date(data2$Date)
 data2$Month <- lubridate::month(data2$Date)
 ##
 ## Import training data:1990 - 2014
-train <-dir("aqi_train/",full.names=T) %>% map_df(fread)
-train$Date <- as.Date(data2$Date)
-train$Month <- lubridate::month(data2$Date)
-## Import test data: 2015-2019
-test <- cbike <-dir("aqi_test/",full.names=T) %>% map_df(fread)
-test$Date <- as.Date(data2$Date)
-test$Month <- lubridate::month(data2$Date)
+## train <-dir("aqi_train/",full.names=T) %>% map_df(fread)
+## train$Date <- as.Date(data2$Date)
+# train$Month <- lubridate::month(data2$Date)
+# ## Import test data: 2015-2019
+# test <- cbike <-dir("aqi_test/",full.names=T) %>% map_df(fread)
+# test$Date <- as.Date(data2$Date)
+# test$Month <- lubridate::month(data2$Date)
 ##
 aqi <- data1 %>% filter(`State Name`=="Maine" & `county Name`=="Penobscot")
 aqi <- as.data.table(aqi)
@@ -40,33 +40,34 @@ aqi2 <- data2 %>% filter(`State Name`=="Maine" & `county Name`=="Penobscot")
 aqi2 <- as.data.table(aqi2)
 AQI <- rbind(data1,data2)
 ##
-## Plot AQI over time: data1: 2010
+## Plot AQI over time: data1:   2011
 ##
 ggplot(aqi,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") + 
-  ylab("Air Quality Index") + ggtitle(" Daily Air Qualitity Index: 2010")
-##
-
-## Plot AQI over time: data2: 2011
-##
-ggplot(aqi2,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") + 
   ylab("Air Quality Index") + ggtitle(" Daily Air Qualitity Index: 2011")
 ##
-## Plot month over month to see the range and outerliers: 2010 - 2011
+
+## Plot AQI over time: data2: 2012
+##
+ggplot(aqi2,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") + 
+  ylab("Air Quality Index") + ggtitle(" Daily Air Qualitity Index: 2012")
+##
+## Plot month over month to see the range and outerliers: 2011 & 2012
 ##
 AQI <- AQI %>% filter(`State Name`=="Maine" & `county Name`=="Penobscot")
 
 ggplot(AQI,aes(x=Date,y=AQI)) + geom_point(color="navyblue") + 
   facet_wrap(~Month) + scale_x_date("month") + 
-  ylab("Air Quality Index") + ggtitle(" Combined Daily Air Qualitity Index: 2010 - 2011")
-##
+  ylab("Air Quality Index") + ggtitle(" Combined Daily Air Qualitity Index: 2011 & 2012") +
+  theme(axis.text.x = element_text(angle = -90))
+  ##
 ## Create time series object: 2010 - 2011
 ##  tsClean function also
 AQI.ts <- ts(AQI[,c("AQI")])
 AQI$Count <- tsclean(AQI.ts)
 ##
 ## Plot Clean and UnClean  data
-ggplot(data=AQI) + geom_point(aes(x=Date,y=Count,col="Clean",size=1)) + ggtitle("First Pass Cleaning[tsclean]") +
-ylab("Clean Counts") + geom_point(data=AQI,aes(x=Date,y=AQI,col="AQI"))
+ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Clean",size=1)) + ggtitle("First Pass Cleaning[tsclean]") +
+ylab("Clean Counts") + geom_line(data=AQI,aes(x=Date,y=AQI,col="AQI"))
 ##
 ## Create weekly and Monthly moving average
 ##
@@ -106,15 +107,11 @@ Acf(count_ma,main="")
 Pacf(count_ma,main="")
 ##
 ## difference of 1 is sufficient
-count_d1 = diff(deseasonal_cnt,differences = 1)
+count_d1 = diff(deseasonal_cnt,differences = 4)
 plot(count_d1)
 ##
 adf.test(count_d1,alternative = "stationary")
 
-###
-### Test bulk import of daily AQI data
-##
-cbike <-dir("aqi_train/",full.names=T) %>% map_df(fread)
 
 
 
