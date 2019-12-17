@@ -16,14 +16,22 @@ library(data.table)
 ## Delete old data sets
 rm(list=ls())
 ## Load sample data and chang date field to "date" type
-data1 <- fread("daily_aqi/daily_aqi_by_county_2010.csv")
+data1 <- fread("aqi_train//daily_aqi_by_county_2010.csv")
 data1$Date <- as.Date(data1$Date)
 data1$Month <- lubridate::month(data1$Date)
 ##
-data2 <- fread("daily_aqi/daily_aqi_by_county_2011.csv")
+data2 <- fread("aqi_train/daily_aqi_by_county_2011.csv")
 data2$Date <- as.Date(data2$Date)
 data2$Month <- lubridate::month(data2$Date)
 ##
+## Import training data:1990 - 2014
+train <-dir("aqi_train/",full.names=T) %>% map_df(fread)
+train$Date <- as.Date(data2$Date)
+train$Month <- lubridate::month(data2$Date)
+## Import test data: 2015-2019
+test <- cbike <-dir("aqi_test/",full.names=T) %>% map_df(fread)
+test$Date <- as.Date(data2$Date)
+test$Month <- lubridate::month(data2$Date)
 ##
 aqi <- data1 %>% filter(`State Name`=="Maine" & `county Name`=="Penobscot")
 aqi <- as.data.table(aqi)
@@ -103,7 +111,10 @@ plot(count_d1)
 ##
 adf.test(count_d1,alternative = "stationary")
 
-
+###
+### Test bulk import of daily AQI data
+##
+cbike <-dir("aqi_train/",full.names=T) %>% map_df(fread)
 
 
 
