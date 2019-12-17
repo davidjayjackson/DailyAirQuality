@@ -72,7 +72,7 @@ ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Count")) +
   ggtitle("Actual Counts vs 7 & 30 Day Moving Average")
 
 ## 
-## DECOMPOSTION OF THE DATA (2010 & 2011: 
+## DECOMPOSTION OF THE DATA (2010 & 2011): 
 ## take seasonaility , trend and cycle into account
 ##
 count_ma = ts(na.omit(AQI$Weekly),frequency=30)
@@ -84,10 +84,24 @@ plot(decomp)
 ## 2nd Augumented Dickey-Fuller Test.
 ##
 adf.test(count_ma,alternative="stationary")
-
-
-
-
+## data:  count_ma
+## Dickey-Fuller = -4.3987, Lag order = 8, p-value = 0.01
+## alternative hypothesis: stationary
+##
+##
+#################################################################
+## AUTOCORRELATIONS AND CHOOSING MODEL ORDER
+## ACF Plots display correlation between a series and lags
+Acf(count_ma,main="")
+## PACF Plots display correlation between series and its lags that
+## explained previous lags.
+Pacf(count_ma,main="")
+##
+## difference of 1 is sufficient
+count_d1 = diff(deseasonal_cnt,differences = 1)
+plot(count_d1)
+##
+adf.test(count_d1,alternative = "stationary")
 
 
 
