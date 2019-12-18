@@ -60,7 +60,7 @@ ggplot(AQI,aes(x=Date,y=AQI)) + geom_point(color="navyblue") +
   ylab("Air Quality Index") + ggtitle(" Combined Daily Air Qualitity Index: 2011 & 2012") +
   theme(axis.text.x = element_text(angle = -90))
   ##
-## Create time series object: 2010 - 2011
+## Create time series object: 2011 - 2012
 ##  tsClean function also
 AQI.ts <- ts(AQI[,c("AQI")])
 AQI$Count <- tsclean(AQI.ts)
@@ -81,7 +81,7 @@ ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Count")) +
   ggtitle("Actual Counts vs 7 & 30 Day Moving Average")
 
 ## 
-## DECOMPOSTION OF THE DATA (2010 & 2011): 
+## DECOMPOSTION OF THE DATA (2011 & 2012): 
 ## take seasonaility , trend and cycle into account
 ##
 count_ma = ts(na.omit(AQI$Weekly),frequency=30)
@@ -93,12 +93,14 @@ plot(decomp)
 ## 2nd Augumented Dickey-Fuller Test.
 ##
 adf.test(count_ma,alternative="stationary")
-## data:  count_ma
-## Dickey-Fuller = -4.3987, Lag order = 8, p-value = 0.01
-## alternative hypothesis: stationary
+## 	Augmented Dickey-Fuller Test
+# data:  count_ma
+# Dickey-Fuller = -4.2426, Lag order = 8, p-value = 0.01
+# alternative hypothesis: stationary
 ##
 ##
 #################################################################
+## Video #3
 ## AUTOCORRELATIONS AND CHOOSING MODEL ORDER
 ## ACF Plots display correlation between a series and lags
 Acf(count_ma,main="")
@@ -107,15 +109,47 @@ Acf(count_ma,main="")
 Pacf(count_ma,main="")
 ##
 ## difference of 1 is sufficient
-count_d1 = diff(deseasonal_cnt,differences = 4)
+count_d1 = diff(deseasonal_cnt,differences = 10)
 plot(count_d1)
 ##
 adf.test(count_d1,alternative = "stationary")
-
-
-
-
-
+##
+## Look for spikes at specific lag points of differenced series
+Acf(count_d1,main="ACF for Difference Series")
+Pacf(count_d1,main="PaCF for Differenced Series")
+##
+## Part #4 : FITTING AN ARIMA MODEL
+## Get auto fit p,d,q values
+auto.arima(deseasonal_cnt,seasonal=FALSE)
+# Series: deseasonal_cnt 
+# ARIMA(3,1,3) 
+# Coefficients:
+#   ar1     ar2     ar3     ma1      ma2      ma3
+# -0.1863  0.7369  0.2286  0.7520  -0.8029  -0.8825
+# s.e.   0.0433  0.0353  0.0492  0.0196   0.0204   0.0249
+# sigma^2 estimated as 2.787:  log likelihood=-1396.75
+# AIC=2807.5   AICc=2807.65   BIC=2839.59
+##
+## EVALUEATE AND ITERATE - does the model make sense?
+##
+fit <- auto.arima(deseasonal_cnt,seasonal = FALSE)
+tsdisplay(residuals(fit), lag.max=45,main='(1,1,1) MOdel Residuals')
+##
+## SET "q" = 8
+fit2 <- arima(deseasonal_cnt,order=c(1,1,8))
+tsdisplay(residuals(fit2), lag.max=45,main='(1,1,8) MOdel Residuals')
+##
+# ## Auto ARIMA fit3
+# fit3 <- arima(deseasonal_cnt,order=c(3,1,3))
+# tsdisplay(residuals(fit3), lag.max=45,main='(3,1,3) MOdel Residuals')
+##
+## Forecast new fit model (fit3)
+##
+fcast <- forecast(fit2,h=45)
+plot(fcast)
+########################################################################
+## PART #4 : ARIMA FORECASTING IN R
+########################################################################
 
 
 
