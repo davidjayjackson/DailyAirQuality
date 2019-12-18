@@ -1,4 +1,4 @@
-## Title: ARMIA Forcasting 
+## Title: ARIMA Forcasting 
 ## Subject: Air Quality Index
 ## YouTube: Tech Know How
 ## Author: David Jackson (davidjayjackson@gmail.com)
@@ -25,43 +25,32 @@ rm(list=ls())
 # data2$Month <- lubridate::month(data2$Date)
 ##
 ## Import training data:1990 - 2014
-data1 <-dir("aqi_train/",full.names=T) %>% 
+data <-dir("aqi_train/",full.names=T) %>% 
     map_df(fread,colClasses=c("State_Code"="character","County_Code"="character"))
 
-data1$Date <- as.Date(data1$Date)
-data1$Year <- lubridate::year(data1$Date)
-data1$Month <- lubridate::month(data1$Date)
-data1 <- data1 %>% select(Date,Year,Month,State_Name,county_Name,AQI)
-# ## Import test data: 2015-2019
-# test <- cbike <-dir("aqi_test/",full.names=T) %>% map_df(fread)
-# test$Date <- as.Date(data2$Date)
-# test$Month <- lubridate::month(data2$Date)
+data$Date <- as.Date(data$Date)
+data$Year <- lubridate::year(data$Date)
+data$Month <- lubridate::month(data$Date)
+data1 <- data %>% select(Date,Year,Month,State_Name,county_Name,AQI)
 ##
 aqi <- data1 %>% filter(State_Name=="Maine" & county_Name=="Penobscot")
 aqi <- as.data.table(aqi)
 ##
-# aqi2 <- data2 %>% filter(`State Name`=="Maine" & `county Name`=="Penobscot")
-# aqi2 <- as.data.table(aqi2)
 AQI <- data1
 ##
-## Plot AQI over time: data1:   2011
+## Plot TRAIN: AQI over time: data1:   2011
 ##
 ggplot(aqi,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") + 
-  ylab("Air Quality Index") + ggtitle(" Daily Air Qualitity Index: 2011")
+  ylab("Air Quality Index") + ggtitle(" Daily (Train) Air Qualitity Index: 2000 - 2018")
 ##
 
-## Plot AQI over time: data2: 2012
-##
-ggplot(aqi,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") + 
-  ylab("Air Quality Index") + ggtitle(" Daily Air Qualitity Index: 2012")
-##
 ## Plot month over month to see the range and outerliers: 2011 & 2012
 ##
 AQI <- AQI %>% filter(State_Name=="Maine" & county_Name=="Penobscot")
 
 ggplot(AQI,aes(x=Date,y=AQI)) + geom_point(color="navyblue") + 
   facet_wrap(~Month) + scale_x_date("month") + 
-  ylab("Air Quality Index") + ggtitle(" Combined Daily Air Qualitity Index: 2011 & 2012") +
+  ylab("Air Quality Index") + ggtitle(" Combined Daily Air Qualitity Index: 2000 & 2018") +
   theme(axis.text.x = element_text(angle = -90))
   ##
 ## Create time series object: 2011 - 2012
@@ -70,25 +59,25 @@ AQI.ts <- ts(AQI[,c("AQI")])
 AQI$Count <- tsclean(AQI.ts)
 ##
 ## Plot Clean and UnClean  data
-ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Clean",size=1)) + ggtitle("First Pass Cleaning[tsclean]") +
+ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Clean",size=0.5)) + ggtitle("First Pass Cleaning[tsclean]") +
 ylab("Clean Counts") + geom_line(data=AQI,aes(x=Date,y=AQI,col="AQI"))
 ##
 ## Create weekly and Monthly moving average
 ##
-AQI$Weekly <- ma(AQI$Count,order=14)
-AQI$Monthly <- ma(AQI$Count,order=30)
+AQI$Weekly <- ma(AQI$Count,order=7)
+AQI$biweekly <- ma(AQI$Count,order=14)
 ## Plot moving averages
 ##
 ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Count")) +
   geom_line(aes(x=Date,y=Weekly,col="Weekly")) +
-  geom_line(aes(x=Date,y=Monthly,col="Monthly")) +
-  ggtitle("Actual Counts vs 7 & 30 Day Moving Average")
+  geom_line(aes(x=Date,y=biweekly,col="biweekly")) +
+  ggtitle("Actual Counts vs 7 & 14 Day Moving Average: 2000 - 2018")
 
 ## 
-## DECOMPOSTION OF THE DATA (2011 & 2012): 
+## DECOMPOSTION OF THE DATA (2000 & 2018): 
 ## take seasonaility , trend and cycle into account
 ##
-count_ma = ts(na.omit(AQI$Weekly),frequency=30)
+count_ma = ts(na.omit(AQI$biweekly),frequency=60)
 decomp = stl(count_ma,s.window="periodic")
 deseasonal_cnt <- seasadj(decomp)
 plot(decomp)
@@ -97,11 +86,12 @@ plot(decomp)
 ## 2nd Augumented Dickey-Fuller Test.
 ##
 adf.test(count_ma,alternative="stationary")
-## 	Augmented Dickey-Fuller Test
-# data:  count_ma
-# Dickey-Fuller = -4.2426, Lag order = 8, p-value = 0.01
+# Augmented Dickey-Fuller Test
+# 
+# data:  count_ma( 14 day moving average)
+# Dickey-Fuller = -5.7194, Lag order = 11, p-value = 0.01
 # alternative hypothesis: stationary
-##
+
 ##
 #################################################################
 ## Video #3
@@ -126,25 +116,27 @@ Pacf(count_d1,main="PaCF for Differenced Series")
 ## Get auto fit p,d,q values
 auto.arima(deseasonal_cnt,seasonal=FALSE)
 # Series: deseasonal_cnt 
-# ARIMA(3,1,3) 
+# ARIMA(5,1,2) 
+# 
 # Coefficients:
-#   ar1     ar2     ar3     ma1      ma2      ma3
-# -0.1863  0.7369  0.2286  0.7520  -0.8029  -0.8825
-# s.e.   0.0433  0.0353  0.0492  0.0196   0.0204   0.0249
-# sigma^2 estimated as 2.787:  log likelihood=-1396.75
-# AIC=2807.5   AICc=2807.65   BIC=2839.59
-##
+#   ar1     ar2      ar3     ar4      ar5      ma1      ma2
+# 0.3496  0.7257  -0.2233  0.0358  -0.1929  -0.0700  -0.7943
+# s.e.  0.0156  0.0174   0.0136  0.0118   0.0111   0.0127   0.0125
+# 
+# sigma^2 estimated as 5.164:  log likelihood=-20307.28
+# AIC=40630.56   AICc=40630.57   BIC=40687.46
+# ##
 ## EVALUEATE AND ITERATE - does the model make sense?
 ##
 fit1 <- auto.arima(deseasonal_cnt,seasonal = FALSE)
 tsdisplay(residuals(fit1), lag.max=45,main='(1,1,1) MOdel Residuals')
 ##
 ## SET "q" = 8
-fit2 <- arima(deseasonal_cnt,order=c(1,1,11))
-tsdisplay(residuals(fit2), lag.max=45,main='(1,1,11) MOdel Residuals')
+fit2 <- arima(deseasonal_cnt,order=c(1,1,20))
+tsdisplay(residuals(fit2), lag.max=45,main='(1,1,20) MOdel Residuals')
 ##
-fit3 <- arima(deseasonal_cnt,order=c(2,0,2))
-tsdisplay(residuals(fit3), lag.max=45,main='(2,0,2) MOdel Residuals')
+fit3 <- arima(deseasonal_cnt,order=c(1,1,30))
+tsdisplay(residuals(fit3), lag.max=45,main='(1,1,30) MOdel Residuals')
 ##
 ## Forecast new fit model (fit3)
 ##
@@ -171,7 +163,7 @@ lines(ts(deseasonal_cnt))
 ##
 ## PART #6: ARIMA Forecasting in R
 ##
-fit5 = arima(deseasonal_cnt,order=c(1,1,11))
+fit5 = arima(deseasonal_cnt,order=c(5,1,2))
 tsdisplay(residuals(fit5),lag.max=15,main="Seasonal Model Residuals")
 #Final Fit Tested ARIMA forecast
 par(mfrow=c(2,2))
