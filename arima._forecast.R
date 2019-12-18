@@ -132,32 +132,53 @@ auto.arima(deseasonal_cnt,seasonal=FALSE)
 ##
 ## EVALUEATE AND ITERATE - does the model make sense?
 ##
-fit <- auto.arima(deseasonal_cnt,seasonal = FALSE)
-tsdisplay(residuals(fit), lag.max=45,main='(1,1,1) MOdel Residuals')
+fit1 <- auto.arima(deseasonal_cnt,seasonal = FALSE)
+tsdisplay(residuals(fit1), lag.max=45,main='(1,1,1) MOdel Residuals')
 ##
 ## SET "q" = 8
 fit2 <- arima(deseasonal_cnt,order=c(1,1,8))
 tsdisplay(residuals(fit2), lag.max=45,main='(1,1,8) MOdel Residuals')
 ##
-# ## Auto ARIMA fit3
-# fit3 <- arima(deseasonal_cnt,order=c(3,1,3))
-# tsdisplay(residuals(fit3), lag.max=45,main='(3,1,3) MOdel Residuals')
-##
 ## Forecast new fit model (fit3)
 ##
-fcast <- forecast(fit2,h=45)
+fcast <- forecast(fit2,h=30)
 plot(fcast)
 ########################################################################
 ## PART #4 : ARIMA FORECASTING IN R
 ########################################################################
-
-
-
-
-
-
-
-
+## TEST MODEL PERFORMANCE WITH A HOLDOUT SET
+##
+hold <- window(ts(deseasonal_cnt),start=600)
+fit_no_holdout = arima(ts(deseasonal_cnt[-c(600:725)]),order=c(1,1,8))
+fcast_no_holdout <- forecast(fit_no_holdout,h=50)
+plot(fcast_no_holdout,main="")
+lines(ts(deseasonal_cnt))
+##
+## MOdel needs seasonality added back in
+##
+fit_w_seasonality = auto.arima(deseasonal_cnt,seasonal=TRUE)
+seas_fcast <- forecast(fit_w_seasonality,h=50)
+plot(seas_fcast)
+lines(ts(count_ma))
+lines(ts(deseasonal_cnt))
+##
+## PART #6: ARIMA Forecasting in R
+##
+fit5 = arima(deseasonal_cnt,order=c(1,1,8))
+tsdisplay(residuals(fit5),lag.max=15,main="Seasonal Model Residuals")
+#Final Fit Tested ARIMA forecast
+par(mfrow=c(2,2))
+fcast <- forecast(fit_w_seasonality,h=30)
+plot(fcast)
+##
+fcast1 <- forecast(fit1,h=30)
+plot(fcast1,main="Fit 1")
+##
+fcast2 <- forecast(fit2,h=30)
+plot(fcast2,main="Fit4")
+##
+fcast5 <- forecast(fit5,h=30)
+plot(fcast5,main="Fit5")
 
 
 
