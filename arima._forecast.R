@@ -3,7 +3,7 @@
 ## YouTube: Tech Know How
 ## Author: David Jackson (davidjayjackson@gmail.com)
 ## Date: 2019-12-16
-
+## Version 1.0 (2019-12-17)
 
 
 library(tidyverse)
@@ -16,29 +16,33 @@ library(data.table)
 ## Delete old data sets
 rm(list=ls())
 ## Load sample data and chang date field to "date" type
-data1 <- fread("aqi_train//daily_aqi_by_county_2011.csv")
-data1$Date <- as.Date(data1$Date)
-data1$Month <- lubridate::month(data1$Date)
+# data1 <- fread("aqi_train//daily_aqi_by_county_2011.csv")
+# data1$Date <- as.Date(data1$Date)
+# data1$Month <- lubridate::month(data1$Date)
 ##
-data2 <- fread("aqi_train/daily_aqi_by_county_2012.csv")
-data2$Date <- as.Date(data2$Date)
-data2$Month <- lubridate::month(data2$Date)
+# data2 <- fread("aqi_train/daily_aqi_by_county_2012.csv")
+# data2$Date <- as.Date(data2$Date)
+# data2$Month <- lubridate::month(data2$Date)
 ##
 ## Import training data:1990 - 2014
-## train <-dir("aqi_train/",full.names=T) %>% map_df(fread)
-## train$Date <- as.Date(data2$Date)
-# train$Month <- lubridate::month(data2$Date)
+data1 <-dir("aqi_train/",full.names=T) %>% 
+    map_df(fread,colClasses=c("State_Code"="character","County_Code"="character"))
+
+data1$Date <- as.Date(data1$Date)
+data1$Year <- lubridate::year(data1$Date)
+data1$Month <- lubridate::month(data1$Date)
+data1 <- data1 %>% select(Date,Year,Month,State_Name,county_Name,AQI)
 # ## Import test data: 2015-2019
 # test <- cbike <-dir("aqi_test/",full.names=T) %>% map_df(fread)
 # test$Date <- as.Date(data2$Date)
 # test$Month <- lubridate::month(data2$Date)
 ##
-aqi <- data1 %>% filter(`State Name`=="Maine" & `county Name`=="Penobscot")
+aqi <- data1 %>% filter(State_Name=="Maine" & county_Name=="Penobscot")
 aqi <- as.data.table(aqi)
 ##
-aqi2 <- data2 %>% filter(`State Name`=="Maine" & `county Name`=="Penobscot")
-aqi2 <- as.data.table(aqi2)
-AQI <- rbind(data1,data2)
+# aqi2 <- data2 %>% filter(`State Name`=="Maine" & `county Name`=="Penobscot")
+# aqi2 <- as.data.table(aqi2)
+AQI <- data1
 ##
 ## Plot AQI over time: data1:   2011
 ##
@@ -48,12 +52,12 @@ ggplot(aqi,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") +
 
 ## Plot AQI over time: data2: 2012
 ##
-ggplot(aqi2,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") + 
+ggplot(aqi,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") + 
   ylab("Air Quality Index") + ggtitle(" Daily Air Qualitity Index: 2012")
 ##
 ## Plot month over month to see the range and outerliers: 2011 & 2012
 ##
-AQI <- AQI %>% filter(`State Name`=="Maine" & `county Name`=="Penobscot")
+AQI <- AQI %>% filter(State_Name=="Maine" & county_Name=="Penobscot")
 
 ggplot(AQI,aes(x=Date,y=AQI)) + geom_point(color="navyblue") + 
   facet_wrap(~Month) + scale_x_date("month") + 
@@ -71,7 +75,7 @@ ylab("Clean Counts") + geom_line(data=AQI,aes(x=Date,y=AQI,col="AQI"))
 ##
 ## Create weekly and Monthly moving average
 ##
-AQI$Weekly <- ma(AQI$Count,order=7)
+AQI$Weekly <- ma(AQI$Count,order=14)
 AQI$Monthly <- ma(AQI$Count,order=30)
 ## Plot moving averages
 ##
@@ -136,20 +140,23 @@ fit1 <- auto.arima(deseasonal_cnt,seasonal = FALSE)
 tsdisplay(residuals(fit1), lag.max=45,main='(1,1,1) MOdel Residuals')
 ##
 ## SET "q" = 8
-fit2 <- arima(deseasonal_cnt,order=c(1,1,8))
-tsdisplay(residuals(fit2), lag.max=45,main='(1,1,8) MOdel Residuals')
+fit2 <- arima(deseasonal_cnt,order=c(1,1,11))
+tsdisplay(residuals(fit2), lag.max=45,main='(1,1,11) MOdel Residuals')
+##
+fit3 <- arima(deseasonal_cnt,order=c(2,0,2))
+tsdisplay(residuals(fit3), lag.max=45,main='(2,0,2) MOdel Residuals')
 ##
 ## Forecast new fit model (fit3)
 ##
-fcast <- forecast(fit2,h=30)
+fcast <- forecast(fit2,h=45)
 plot(fcast)
 ########################################################################
 ## PART #4 : ARIMA FORECASTING IN R
 ########################################################################
 ## TEST MODEL PERFORMANCE WITH A HOLDOUT SET
 ##
-hold <- window(ts(deseasonal_cnt),start=600)
-fit_no_holdout = arima(ts(deseasonal_cnt[-c(600:725)]),order=c(1,1,8))
+hold <- window(ts(deseasonal_cnt),start=1254)
+fit_no_holdout = arima(ts(deseasonal_cnt[-c(1254:1454)]),order=c(1,1,11))
 fcast_no_holdout <- forecast(fit_no_holdout,h=50)
 plot(fcast_no_holdout,main="")
 lines(ts(deseasonal_cnt))
@@ -164,20 +171,20 @@ lines(ts(deseasonal_cnt))
 ##
 ## PART #6: ARIMA Forecasting in R
 ##
-fit5 = arima(deseasonal_cnt,order=c(1,1,8))
+fit5 = arima(deseasonal_cnt,order=c(1,1,11))
 tsdisplay(residuals(fit5),lag.max=15,main="Seasonal Model Residuals")
 #Final Fit Tested ARIMA forecast
 par(mfrow=c(2,2))
-fcast <- forecast(fit_w_seasonality,h=30)
+fcast <- forecast(fit_w_seasonality,h=45)
 plot(fcast)
 ##
-fcast1 <- forecast(fit1,h=30)
+fcast1 <- forecast(fit1,h=45)
 plot(fcast1,main="Fit 1")
 ##
-fcast2 <- forecast(fit2,h=30)
+fcast2 <- forecast(fit2,h=45)
 plot(fcast2,main="Fit4")
 ##
-fcast5 <- forecast(fit5,h=30)
+fcast5 <- forecast(fit5,h=45)
 plot(fcast5,main="Fit5")
 
 
