@@ -23,6 +23,14 @@ data <-dir("aqi_train/",full.names=T) %>%
 data$Date <- as.Date(data$Date)
 data$Year <- lubridate::year(data$Date)
 data$Month <- lubridate::month(data$Date)
+## Plot moving averages for entire data.drame
+##
+data$ma7 <- ma(data$AQI,order=7)
+data$ma14 <- ma(data$AQI,order=14)
+A <- data %>% filter(Year ==2017) 
+ggplot(data=A,aes(x=Date,y=ma14,col="ma14")) + geom_line() +
+  geom_line(data=A,aes(x=Date,y=ma7,col="ma7"))
+##
 aqi <- data %>% filter(State_Name=="Ohio" & county_Name=="Franklin") %>%
   select(Date,Year,Month,State_Name,county_Name,AQI)
 ##
