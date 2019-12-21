@@ -28,9 +28,10 @@ data$Month <- as.integer(lubridate::month(data$Date))
 data$ma7  <- ma(data$AQI,order=7)
 data$ma14 <- ma(data$AQI,order=14)
 data$ma28 <- ma(data$AQI,order=28)
+data$ma180 <- ma(data$AQI,order=180)
 ##
 ## Reorder columns
-data <- data %>% select(Date,Year,Month,State_Name,County_Name,AQI,ma7,ma14,ma28)
+data <- data %>% select(Date,Year,Month,State_Name,County_Name,AQI,ma7,ma14,ma28,ma180)
 ## Create SQLite3 database
 #
 data$Date <- as.character(data$Date)
@@ -43,9 +44,8 @@ dbListTables(db)
 dbCommit(db)
 aqi <- dbGetQuery(db,"SELECT Date,Year,Month,
                   State_Name, County_Name,AQI,
-                  ma7,ma14,ma28
-                  FROM ozone WHERE Year >=2000
-                  AND State_Name='Ohio';")
+                  ma7,ma14,ma28,ma180
+                  FROM ozone ;")
 aqi$Date <- as.Date(aqi$Date)
 ##
 ## Plot moving averages for entire data.drame
@@ -53,10 +53,10 @@ aqi$Date <- as.Date(aqi$Date)
 
  
 ggplot(data=aqi,aes(x=Date,y=ma7,col="ma7")) + geom_line() +
-  geom_line(data=aqi,aes(x=Date,y=ma28,col="ma28"))
+  geom_line(data=aqi,aes(x=Date,y=ma180,col="ma180"))
 ##
-aqi <- aqi %>% filter(Year ==2018) %>%
-  select(Date,Year,Month,State_Name,County_Name,AQI,ma7,ma28)
+aqi1 <- aqi %>% filter(Year ==2008) %>%
+  select(Date,Year,Month,State_Name,County_Name,AQI,ma7,ma180)
 ##
 AQI <- as.data.table(aqi)
 ##
@@ -79,7 +79,7 @@ AQI.ts <- ts(AQI[,c("AQI")])
 AQI$Count <- tsclean(AQI.ts,replace.missing = TRUE)
 ##
 ## Plot Clean and UnClean  data
-ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Clean",size=0.5)) + ggtitle("First Pass Cleaning[tsclean]") +
+ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Clean")) + ggtitle("First Pass Cleaning[tsclean]") +
 ylab("Clean Counts") + geom_line(data=AQI,aes(x=Date,y=AQI,col="AQI"))
 ##
 ## Create weekly and Monthly moving average
