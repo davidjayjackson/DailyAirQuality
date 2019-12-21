@@ -12,33 +12,57 @@ library(tseries)
 ## library(rio)
 ## library(readxl)
 library(data.table)
+library(RSQLite)
+set.seed(1234)
 ##
 ## Delete old data sets
 rm(list=ls())
 ##
 ## Import training data:2000 - 2018
-data <-dir("aqi_train/",full.names=T) %>% 
+data <-dir("aqi_test/",full.names=T) %>% 
     map_df(fread,colClasses=c("State_Code"="character","County_Code"="character"))
 
 data$Date <- as.Date(data$Date)
-data$Year <- lubridate::year(data$Date)
-data$Month <- lubridate::month(data$Date)
+data$Year <- as.integer(lubridate::year(data$Date))
+data$Month <- as.integer(lubridate::month(data$Date))
+data$ma7  <- ma(data$AQI,order=7)
+data$ma14 <- ma(data$AQI,order=14)
+data$ma28 <- ma(data$AQI,order=28)
+##
+## Reorder columns
+data <- data %>% select(Date,Year,Month,State_Name,County_Name,AQI,ma7,ma14,ma28)
+## Create SQLite3 database
+#
+data$Date <- as.character(data$Date)
+db <- dbConnect(SQLite(),dbname="../db/airquality.sqlite3")
+dbRemoveTable(db,"ozone")
+dbWriteTable(db,"ozone",data,row.names=FALSE,overwrite=TRUE)
+dbSendQuery(db,"CREATE INDEX Year ON ozone(Year)")
+dbSendQuery(db,"CREATE INDEX State ON ozone(State_Name)")
+dbListTables(db)
+dbCommit(db)
+aqi <- dbGetQuery(db,"SELECT Date,Year,Month,
+                  State_Name, County_Name,AQI,
+                  ma7,ma14,ma28
+                  FROM ozone WHERE Year >=2000
+                  AND State_Name='Ohio';")
+aqi$Date <- as.Date(aqi$Date)
+##
 ## Plot moving averages for entire data.drame
 ##
-data$ma7 <- ma(data$AQI,order=7)
-data$ma14 <- ma(data$AQI,order=14)
-A <- data %>% filter(Year ==2017) 
-ggplot(data=A,aes(x=Date,y=ma14,col="ma14")) + geom_line() +
-  geom_line(data=A,aes(x=Date,y=ma7,col="ma7"))
+
+ 
+ggplot(data=aqi,aes(x=Date,y=ma7,col="ma7")) + geom_line() +
+  geom_line(data=aqi,aes(x=Date,y=ma28,col="ma28"))
 ##
-aqi <- data %>% filter(State_Name=="Ohio" & county_Name=="Franklin") %>%
-  select(Date,Year,Month,State_Name,county_Name,AQI)
+aqi <- aqi %>% filter(Year ==2018) %>%
+  select(Date,Year,Month,State_Name,County_Name,AQI,ma7,ma28)
 ##
 AQI <- as.data.table(aqi)
 ##
 ## Plot TRAIN: AQI over time: data1:   2011
 ##
-ggplot(AQI,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") + 
+ggplot(aqi,aes(x=Date,y=AQI)) + geom_line() + scale_x_date("month") + 
   ylab("Air Quality Index") + ggtitle(" Daily (Train) Air Qualitity Index: 2000 - 2018")
 ##
 
@@ -52,7 +76,7 @@ ggplot(AQI,aes(x=Date,y=AQI)) + geom_point(color="navyblue") +
 ## Create time series object: 2011 - 2012
 ##  tsClean function also
 AQI.ts <- ts(AQI[,c("AQI")])
-AQI$Count <- tsclean(AQI.ts)
+AQI$Count <- tsclean(AQI.ts,replace.missing = TRUE)
 ##
 ## Plot Clean and UnClean  data
 ggplot(data=AQI) + geom_line(aes(x=Date,y=Count,col="Clean",size=0.5)) + ggtitle("First Pass Cleaning[tsclean]") +
